@@ -1,0 +1,34 @@
+[project]
+name = "rail-delay-fti"
+version = "0.1.0"
+description = "FTI project: ICE Hamburg to Berlin with Hopsworks and MinIO"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "hopsworks[python]==5.0.7",
+  "pandas>=2.2,<3",
+  "scikit-learn>=1.6,<2",
+  "pyarrow>=19,<26",
+  "boto3>=1.35,<2",
+  "requests>=2.32,<3",
+  "python-dotenv>=1.0,<2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.9,<1", "moto[s3]>=5,<6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+rail-delay = "rail_delay.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rail_delay"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
