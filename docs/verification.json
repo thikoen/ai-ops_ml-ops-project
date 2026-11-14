@@ -1,0 +1,41 @@
+{
+  "verified_at_utc": "2026-11-14T20:03:02.738566+00:00",
+  "environment": "GitHub Codespaces, Docker Compose, real MinIO and Hopsworks",
+  "hopsworks_client": "5.2.3",
+  "feature_group": "ice_hamburg_berlin_examples",
+  "feature_group_version": 1,
+  "stored_feature_rows": 3057,
+  "training_dataset_version": 1,
+  "model_name": "ice_hamburg_berlin_classifier",
+  "model_version": 1,
+  "validation": {
+    "accuracy": 0.5658263305322129,
+    "balanced_accuracy": 0.5921833141982396,
+    "precision": 0.7129629629629629,
+    "recall": 0.38308457711442784,
+    "f1": 0.49838187702265374,
+    "confusion_matrix_0_1": [
+      [
+        125,
+        31
+      ],
+      [
+        124,
+        77
+      ]
+    ]
+  },
+  "inference_day": "2025-10-30",
+  "prediction_rows": 18,
+  "predictions_with_delay": 10,
+  "object_store_bucket": "rail-delay",
+  "checks": {
+    "feature_store_readback": true,
+    "registered_model_exists": true,
+    "prediction_parquet_readback": true,
+    "features_complete": true,
+    "probabilities_valid": true,
+    "prediction_model_version_matches": true,
+    "no_target_in_predictions": true
+  }
+}

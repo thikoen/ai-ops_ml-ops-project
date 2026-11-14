@@ -13,7 +13,7 @@ from rail_delay.settings import FEATURES
 
 
 def test_inference_uses_registered_version_and_current_request(tmp_path, monkeypatch):
-    # Real tiny model; external services mocked. This is no external integration claim.
+    # Fit a small real model; mock Hopsworks and object storage.
     x = pd.DataFrame(
         {
             "delay_mean_7d": [1.0] * 4,

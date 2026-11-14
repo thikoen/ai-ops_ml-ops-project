@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "FTI project: ICE Hamburg to Berlin with Hopsworks and MinIO"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "hopsworks[python]==5.0.7",
+  "hopsworks[python]==5.2.3",
   "pandas>=2.2,<3",
   "scikit-learn>=1.6,<2",
   "pyarrow>=19,<26",

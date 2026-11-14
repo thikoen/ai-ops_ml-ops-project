@@ -105,8 +105,8 @@ Local credentials are **not** transferred to Codespaces. `.env` and SDK certific
 are excluded from Git and the image. In PowerShell, use `Copy-Item .env.example .env`.
 
 ```sh
+docker compose build minio pipeline
 docker compose up -d minio
-docker compose build pipeline
 
 # 1. Write features and labels to Hopsworks.
 docker compose run --rm pipeline features --start 2025-06-01 --end 2025-10-30
@@ -123,6 +123,13 @@ day after `--end` for arrivals crossing midnight. The source supplies monthly fi
 so this example reads May–October: approximately **624 MB** in total. Ending on
 October 30 keeps the following day in the same monthly archive. Other month
 boundaries may require an additional file.
+
+MinIO is built from the official `RELEASE.2025-10-15T17-29-55Z` source using
+`Dockerfile.minio`. The previously pinned Docker Hub and Quay images were no longer
+available during the November integration test. The first build therefore takes
+several minutes; subsequent builds reuse Docker layers. The upstream AGPL-3.0 license
+is included in the image. This remains a local course setup, not a managed production
+storage service.
 
 Each file is downloaded, checked against its published SHA-256 and filtered in
 batches. Only ICE stops at the two stations remain in the MinIO cache. Interrupted
@@ -241,22 +248,33 @@ Further limitations:
 - When changing feature semantics, increment `HOPSWORKS_FEATURE_VERSION` and rerun
   all three steps. Existing views are not silently redefined.
 
-## Verification status and tests
+## Verification
 
-As of **2026-09-12**: 15 automated tests passed; Ruff reported no issues. Real-data
-and model checks used the periods listed above. Compose configuration and Linux
-dependency resolution from `uv.lock` passed. Actual Hopsworks SDK login and metadata
-access to the feature store and registry succeeded (backend 5.0.3, SDK 5.0.7).
+The complete Docker Compose setup was tested in GitHub Codespaces on
+**2026-11-14**, using real MinIO storage and the Hopsworks cloud service
+(backend 5.2.2, Python client 5.2.3). All three CLI pipelines completed successfully.
 
-**Still pending in Codespaces:** Container build and the complete flow from MinIO
-through Hopsworks upload, training dataset creation, model registration and inference.
-No local Docker engine was running. The native Windows attempt stopped before upload
-because the Hopsworks Delta dependency is unavailable on Windows. The Linux container
-installs it through `hopsworks[python]`. Local file-cache and mocked S3 tests do not
-replace this integration test. This implementation has not yet created features or
-models in the Hopsworks project.
+| Check | Result |
+|---|---|
+| MinIO and Python container builds | Passed |
+| Automated tests and Ruff in Linux | 15 tests passed; no lint findings |
+| Feature pipeline | 3,057 feature rows stored in Hopsworks |
+| Training pipeline | Feature View and training dataset created; model version 1 registered |
+| Validation F1 | 0.498, matching the earlier local evaluation |
+| Inference for 2025-10-30 | 18 predictions written to MinIO |
+| Independent readback | Feature Group and prediction Parquet read successfully; model version checked |
 
-On Linux with Python 3.12 and uv:
+The readback checks confirm complete features, probabilities in [0, 1], no target
+column in predictions and the expected registered model version. A machine-readable
+record is included in [docs/verification.json](docs/verification.json). Later training
+runs create additional model and training-dataset versions.
+
+Two deployment issues were resolved during verification: unavailable prebuilt MinIO
+images were replaced with a build from official source, and the Hopsworks client
+was updated to match the cloud backend's 5.2 release line. The Python image no longer
+installs the compiler required by the old client's removed dependency.
+
+To run the automated checks on Linux with Python 3.12 and uv:
 
 ```sh
 uv sync --locked
@@ -264,42 +282,28 @@ uv run pytest -q
 uv run ruff check src tests
 ```
 
-The Dockerfile installs `build-essential` because the SDK dependency `twofish`
-requires a C compiler. Dependencies are defined in `pyproject.toml` and `uv.lock`.
-Tests cover keys, direction, label quality, time windows, current inputs, training
-splits, replay cutoff, download hashes and S3 Parquet/JSON round trips.
+Tests cover journey keys, travel direction, label quality, historical time windows,
+current inputs, chronological splits, replay cutoff, download checksums and S3
+Parquet/JSON round trips. Unit tests mock external services; the separate Codespaces
+run above verifies the actual service integration.
 
-## Assignment requirements review
+## Assignment coverage
 
-The supplied assignment explicitly excludes **model performance** from assessment:
-accuracy and F1 are not grading criteria. Assessment is pass/fail and focuses on
-FTI structure, use of the feature store, pipeline completeness, reproducibility and
-honest reflection. Simulating current inputs by holding out historical data is
-explicitly allowed. Optional extensions are not assessed.
+The project implements the required FTI architecture and uses Hopsworks to store
+and retrieve features. The assignment explicitly allows held-out historical data
+to simulate current inputs and does not assess model performance. The model's
+limited predictive value is discussed above.
 
-The implementation covers the required scope, but full operational compliance is
-**not yet verified**: successful feature-store storage and the complete subsequent
-training/inference flow must still be demonstrated in Codespaces. Documenting a
-problem is required by the assignment; it does not guarantee acceptance of an
-unfinished pipeline.
-
-| Requirement | Implementation / evidence | Status |
-|---|---|---|
-| Data source, target and historical/current split | Public DB archive, arrival delay >= 5 minutes, chronological cutoff and held-out replay | Implemented; real-data checks completed |
-| At least one aggregated feature | `delay_mean_7d` in `features.py`; read from the Feature View for inference | Implemented and locally tested |
-| At least one current RT feature | Departure observation reconstructed for the simulated request; used by the model | Implemented and locally tested |
-| Feature pipeline: retrieve, engineer, label, FG with primary key/event time, insert | `feature_pipeline()` and `hops.feature_group()` | Implemented; actual Hopsworks upload pending |
-| Training pipeline: FG, FV query, training dataset, fit/evaluate, save/register | `training_pipeline()` and `hops.feature_view()` | Implemented; local model checks passed, service integration pending |
-| Inference pipeline: current inputs, FV retrieval, registry download, prediction | `inference_pipeline()` | Implemented; mocked integration test passed, actual service flow pending |
-| Hopsworks feature store | Explicit SDK calls; no local substitute in the application | Login/metadata verified; stored features not yet verified |
-| Python below 3.14 and defined dependencies | Python 3.12, `pyproject.toml`, `uv.lock`, Dockerfile | Defined; Linux dependency resolution passed |
-| README describing features, model, architecture and execution | This document and `.env.example` | Completed |
-| Honest discussion of limitations and incomplete functionality | Results and verification sections above | Completed |
-| GitHub repository containing all three pipelines | This repository, `src/rail_delay/pipelines.py` | Completed |
-| Object store and container setup (additional project choices) | MinIO and Docker Compose | Implemented; complete container run pending |
-
-Before submission, run the three commands above in order and confirm that Hopsworks
-contains the Feature Group rows, a Feature View/training dataset and a registered
-model, and that MinIO contains the inference Parquet output. Record the successful
-run and any remaining issues here. Submit the repository link through the Teams
-assignment by **2026-11-15 23:59**, as specified in the brief.
+| Requirement | Implementation |
+|---|---|
+| Public data source and defined target | Archived DB observations; arrival delay of at least five minutes |
+| Historical and simulated current data | Chronological training cutoff and later replay day |
+| Aggregated feature | Seven-day historical mean delay from the Feature View |
+| Current RT feature | Departure delay reconstructed at the simulated request time |
+| Feature pipeline | Retrieve data, engineer features and labels, insert into a Feature Group with primary key and event time |
+| Training pipeline | Feature Group → Feature View → training dataset → fit/evaluate → save and register model |
+| Inference pipeline | Retrieve features and current inputs, download registered model, predict and store results |
+| Python and dependencies | Python 3.12, pinned Hopsworks client and uv.lock |
+| Reproducible setup | Dockerfiles, Compose, .env.example and execution instructions |
+| Documentation and reflection | Features, model, pipeline boundaries, results and limitations in this README |
+| Additional object-store requirement | MinIO for source extracts, reports and prediction Parquet files |

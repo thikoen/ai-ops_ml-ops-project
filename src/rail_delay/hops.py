@@ -1,4 +1,4 @@
-"""The only connection boundary to Hopsworks; no local feature-store substitute."""
+"""Hopsworks connection, Feature Group and Feature View definitions."""
 
 from .settings import FEATURES, GROUP, TARGET, VIEW
 
